@@ -1,85 +1,104 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Container,
-  Paper,
+import axios from 'axios';
+import { 
+  Container, 
+  Paper, 
   Typography,
   Grid,
   Card,
-  CardContent,
-  CircularProgress,
-  Alert
+  CardContent
 } from '@mui/material';
-import axios from 'axios';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Analytics = () => {
-  const [analytics, setAnalytics] = useState([]);
+  const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        console.log('Fetching analytics...');
+        const response = await axios.get('http://localhost:5001/api/analytics');
+        console.log('Analytics response:', response.data);
+        setAnalyticsData(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch analytics:', err);
+        setError('Failed to fetch analytics');
+        setLoading(false);
+      }
+    };
+
     fetchAnalytics();
   }, []);
 
-  const fetchAnalytics = async () => {
-    try {
-      const response = await axios.get('http://localhost:5001/api/analytics');
-      setAnalytics(response.data);
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch analytics');
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container sx={{ mt: 4 }}>
-        <Alert severity="error">{error}</Alert>
-      </Container>
-    );
-  }
+  if (loading) return <Typography>Loading analytics...</Typography>;
+  if (error) return <Typography color="error">{error}</Typography>;
+  if (!analyticsData) return <Typography>No analytics data available</Typography>;
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Category Analytics
-      </Typography>
+    <Container>
+      <Typography variant="h4" gutterBottom>Analytics Dashboard</Typography>
+      
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6">Total Items</Typography>
+              <Typography variant="h4">{analyticsData.summary.totalItems}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6">Total Value</Typography>
+              <Typography variant="h4">${analyticsData.summary.totalValue}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6">Average Price</Typography>
+              <Typography variant="h4">${analyticsData.summary.averagePrice}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
       <Grid container spacing={3}>
-        {analytics.map((category) => (
-          <Grid item xs={12} md={6} key={category._id}>
-            <Paper elevation={3}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {category._id || 'Uncategorized'}
-                  </Typography>
-                  <Typography variant="body1">
-                    Average Price: ${category.averagePrice.toFixed(2)}
-                  </Typography>
-                  <Typography variant="body1">
-                    Total Items: {category.totalItems}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-                    Items in this category:
-                  </Typography>
-                  {category.items.map((item, index) => (
-                    <Typography key={index} variant="body2">
-                      • {item.name}: ${item.price}
-                    </Typography>
-                  ))}
-                </CardContent>
-              </Card>
-            </Paper>
-          </Grid>
-        ))}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Category Distribution</Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={analyticsData.categoryDistribution}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="category" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="count" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Price Ranges</Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={analyticsData.priceRanges}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="_id" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="count" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
       </Grid>
     </Container>
   );
